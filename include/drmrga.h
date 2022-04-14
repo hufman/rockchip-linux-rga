@@ -23,6 +23,8 @@
 #include <errno.h>
 #include <sys/cdefs.h>
 
+#include "rga.h"
+
 #ifdef ANDROID
 #define DRMRGA_HARDWARE_MODULE_ID "librga"
 
@@ -180,7 +182,16 @@ typedef struct rga_info {
 	int priority;
 
 	unsigned short enable;
-	char reserve[482];
+
+    int handle;
+
+    struct rga_mosaic_info mosaic_info;
+
+    struct rga_osd_info osd_info;
+
+    struct rga_pre_intr_info pre_intr;
+
+	char reserve[410];
 } rga_info_t;
 
 

@@ -19,6 +19,8 @@
 #ifndef _RGA_IM2D_HARDWARE_H_
 #define _RGA_IM2D_HARDWARE_H_
 
+#include "rga.h"
+
 typedef enum {
     IM_RGA_HW_VERSION_RGA_V_ERR_INDEX = 0x0,
     IM_RGA_HW_VERSION_RGA_1_INDEX,
@@ -94,6 +96,9 @@ typedef enum {
     IM_RGA_SUPPORT_FEATURE_FBC_INDEX,
     IM_RGA_SUPPORT_FEATURE_BLEND_YUV_INDEX,
     IM_RGA_SUPPORT_FEATURE_BT2020_INDEX,
+    IM_RGA_SUPPORT_FEATURE_MOSAIC_INDEX,
+    IM_RGA_SUPPORT_FEATURE_OSD_INDEX,
+    IM_RGA_SUPPORT_FEATURE_PRE_INTR_INDEX,
     IM_RGA_SUPPORT_FEATURE_MASK_INDEX,
 } IM_RGA_SUPPORT_FEATURE_INDEX;
 
@@ -108,6 +113,9 @@ typedef enum {
     IM_RGA_SUPPORT_FEATURE_FBC            = 1 << IM_RGA_SUPPORT_FEATURE_FBC_INDEX,
     IM_RGA_SUPPORT_FEATURE_BLEND_YUV      = 1 << IM_RGA_SUPPORT_FEATURE_BLEND_YUV_INDEX,
     IM_RGA_SUPPORT_FEATURE_BT2020         = 1 << IM_RGA_SUPPORT_FEATURE_BT2020_INDEX,
+    IM_RGA_SUPPORT_FEATURE_MOSAIC         = 1 << IM_RGA_SUPPORT_FEATURE_MOSAIC_INDEX,
+    IM_RGA_SUPPORT_FEATURE_OSD            = 1 << IM_RGA_SUPPORT_FEATURE_OSD_INDEX,
+    IM_RGA_SUPPORT_FEATURE_PRE_INTR       = 1 << IM_RGA_SUPPORT_FEATURE_PRE_INTR_INDEX,
     IM_RGA_SUPPORT_FEATURE_MASK           = ~((~(unsigned int)0x0 << IM_RGA_SUPPORT_FEATURE_MASK_INDEX) | 1),
 } IM_RGA_SUPPORT_FEATURE;
 
@@ -115,12 +123,13 @@ typedef struct {
     unsigned int version;
     unsigned int input_resolution;
     unsigned int output_resolution;
+    unsigned int byte_stride;
     unsigned int scale_limit;
     unsigned int performance;
     unsigned int input_format;
     unsigned int output_format;
     unsigned int feature;
-    char reserved[28];
+    char reserved[24];
 } rga_info_table_entry;
 
 typedef struct {
@@ -129,8 +138,8 @@ typedef struct {
 } rga_dirver_bind_table_entry;
 
 const rga_info_table_entry hw_info_table[] = {
-    { IM_RGA_HW_VERSION_RGA_V_ERR       ,    0,     0,  0, 0,   0, 0, 0, {0} },
-    {   IM_RGA_HW_VERSION_RGA_1         , 8192, 2048,   8, 1,
+    { IM_RGA_HW_VERSION_RGA_V_ERR       ,    0,    0, 0, 0, 0,   0, 0, 0, {0} },
+    {   IM_RGA_HW_VERSION_RGA_1         , 8192, 2048, 4, 8, 1,
                                         /* input format */
                                         IM_RGA_SUPPORT_FORMAT_RGB |
                                         IM_RGA_SUPPORT_FORMAT_RGB_OTHER |
@@ -152,7 +161,7 @@ const rga_info_table_entry hw_info_table[] = {
                                         IM_RGA_SUPPORT_FEATURE_ROP,
                                         /* reserved */
                                         {0} },
-    { IM_RGA_HW_VERSION_RGA_1_PLUS      , 8192, 2048,   8, 1,
+    { IM_RGA_HW_VERSION_RGA_1_PLUS      , 8192, 2048, 4, 8, 1,
                                         /* input format */
                                         IM_RGA_SUPPORT_FORMAT_RGB |
                                         IM_RGA_SUPPORT_FORMAT_RGB_OTHER |
@@ -173,7 +182,7 @@ const rga_info_table_entry hw_info_table[] = {
                                         IM_RGA_SUPPORT_FEATURE_COLOR_PALETTE,
                                         /* reserved */
                                         {0} },
-    { IM_RGA_HW_VERSION_RGA_2           , 8192, 4096, 16, 2,
+    { IM_RGA_HW_VERSION_RGA_2           , 8192, 4096, 4, 16, 2,
                                         /* input format */
                                         IM_RGA_SUPPORT_FORMAT_RGB |
                                         IM_RGA_SUPPORT_FORMAT_RGB_OTHER |
@@ -194,7 +203,7 @@ const rga_info_table_entry hw_info_table[] = {
                                         IM_RGA_SUPPORT_FEATURE_ROP,
                                         /* reserved */
                                         {0} },
-    { IM_RGA_HW_VERSION_RGA_2_LITE0     , 8192, 4096,   8, 2,
+    { IM_RGA_HW_VERSION_RGA_2_LITE0     , 8192, 4096, 4, 8, 2,
                                         /* input format */
                                         IM_RGA_SUPPORT_FORMAT_RGB |
                                         IM_RGA_SUPPORT_FORMAT_RGB_OTHER |
@@ -215,7 +224,7 @@ const rga_info_table_entry hw_info_table[] = {
                                         IM_RGA_SUPPORT_FEATURE_ROP,
                                         /* reserved */
                                         {0} },
-    { IM_RGA_HW_VERSION_RGA_2_LITE1     , 8192, 4096,   8, 2,
+    { IM_RGA_HW_VERSION_RGA_2_LITE1     , 8192, 4096, 4, 8, 2,
                                         /* input format */
                                         IM_RGA_SUPPORT_FORMAT_RGB |
                                         IM_RGA_SUPPORT_FORMAT_RGB_OTHER |
@@ -239,7 +248,7 @@ const rga_info_table_entry hw_info_table[] = {
                                         IM_RGA_SUPPORT_FEATURE_COLOR_PALETTE,
                                         /* reserved */
                                         {0} },
-    { IM_RGA_HW_VERSION_RGA_2_ENHANCE   , 8192, 4096, 16,  2,
+    { IM_RGA_HW_VERSION_RGA_2_ENHANCE   , 8192, 4096, 4, 16,  2,
                                         /* input format */
                                         IM_RGA_SUPPORT_FORMAT_RGB |
                                         IM_RGA_SUPPORT_FORMAT_RGB_OTHER |
@@ -266,7 +275,7 @@ const rga_info_table_entry hw_info_table[] = {
                                         IM_RGA_SUPPORT_FEATURE_ROP,
                                         /* reserved */
                                         {0} },
-    { IM_RGA_HW_VERSION_RGA_3           , 8176, 8128,  8,  4,
+    { IM_RGA_HW_VERSION_RGA_3           , 8176, 8128, 16, 8,  4,
                                         /* input format */
                                         IM_RGA_SUPPORT_FORMAT_RGB |
                                         IM_RGA_SUPPORT_FORMAT_YUV_420_SEMI_PLANNER_8_BIT |
@@ -294,6 +303,8 @@ const rga_dirver_bind_table_entry driver_bind_table[] = {
     { { 0, 0, 0, "0.0.0" }, {0, 0, 0, "0.0.0" } },
     { { 1, 0, 3, "1.0.3" }, {0, 0, 0, "0.0.0" } },
     { { 1, 6, 0, "1.6.0" }, {1, 1, 5, "1.1.5" } },
+    { { 1, 7, 2, "1.7.2" }, {1, 2, 0, "1.2.0" } },
+    { { 1, 7, 3, "1.7.3" }, {1, 2, 4, "1.2.4" } },
 };
 
 #endif
