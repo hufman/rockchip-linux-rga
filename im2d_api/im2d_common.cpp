@@ -306,7 +306,8 @@ IM_STATUS rga_get_info(rga_info_table_entry *return_table) {
                     memcpy(&merge_table, &hw_info_table[rga_version], sizeof(merge_table));
 
                     merge_table.input_format |= IM_RGA_SUPPORT_FORMAT_YUYV_422 |
-                                                IM_RGA_SUPPORT_FORMAT_YUV_400;
+                                                IM_RGA_SUPPORT_FORMAT_YUV_400 |
+                                                IM_RGA_SUPPORT_FORMAT_RGBA2BPP;
                     merge_table.output_format |= IM_RGA_SUPPORT_FORMAT_YUV_400 |
                                                  IM_RGA_SUPPORT_FORMAT_Y4;
                     merge_table.feature |= IM_RGA_SUPPORT_FEATURE_QUANTIZE |
@@ -732,6 +733,13 @@ IM_STATUS rga_check_format(const char *name, rga_buffer_t info, im_rect rect, in
         ret = rga_yuv_legality_check(name, info, rect);
         if (ret != IM_STATUS_SUCCESS)
             return ret;
+    } else if (format == RK_FORMAT_RGBA2BPP) {
+        if (~format_usage & IM_RGA_SUPPORT_FORMAT_RGBA2BPP) {
+            imSetErrorMsg("%s unsupported rgba2bpp format, format = 0x%x(%s)\n%s",
+                          name, info.format, translate_format_str(info.format),
+                          querystring((strcmp("dst", name) == 0) ? RGA_OUTPUT_FORMAT : RGA_INPUT_FORMAT));
+            return IM_STATUS_NOT_SUPPORTED;
+        }
     } else {
         imSetErrorMsg("%s unsupported this format, format = 0x%x(%s)\n%s",
                       name, info.format, translate_format_str(info.format),
@@ -933,6 +941,26 @@ IM_API IM_STATUS rga_import_buffers(struct rga_buffer_pool *buffer_pool) {
     return IM_STATUS_SUCCESS;
 }
 
+IM_API rga_buffer_handle_t rga_import_buffer(uint64_t memory, int type, uint32_t size) {
+    struct rga_buffer_pool buffer_pool;
+    struct rga_external_buffer buffers[1];
+
+    memset(&buffer_pool, 0x0, sizeof(buffer_pool));
+    memset(buffers, 0x0, sizeof(buffers));
+
+    buffers[0].type = type;
+    buffers[0].memory = memory;
+    buffers[0].memory_info.size = size;
+
+    buffer_pool.buffers = (uint64_t)buffers;
+    buffer_pool.size = 1;
+
+    if (rga_import_buffers(&buffer_pool) != IM_STATUS_SUCCESS)
+        return -1;
+
+    return buffers[0].handle;
+}
+
 IM_API rga_buffer_handle_t rga_import_buffer(uint64_t memory, int type, im_handle_param_t *param) {
     struct rga_buffer_pool buffer_pool;
     struct rga_external_buffer buffers[1];
@@ -1012,6 +1040,33 @@ IM_STATUS rga_get_opt(im_opt_t *opt, void *ptr) {
         opt->core = ((im_opt_t *)ptr)->core;
     } else {
         memcpy(opt, ptr, sizeof(im_opt_t));
+    }
+
+    return IM_STATUS_SUCCESS;
+}
+
+IM_API im_ctx_id_t rga_begin_job(uint32_t flags) {
+    if (rga_get_context() != IM_STATUS_SUCCESS)
+        return IM_STATUS_FAILED;
+
+    if (ioctl(rgaCtx->rgaFd, RGA_START_CONFIG, &flags) < 0) {
+        printf(" %s(%d) start config fail: %s",__FUNCTION__, __LINE__,strerror(errno));
+        ALOGE(" %s(%d) start config fail: %s",__FUNCTION__, __LINE__,strerror(errno));
+        return IM_STATUS_FAILED;
+    }
+
+    return (im_ctx_id_t)flags;
+}
+
+IM_API IM_STATUS rga_cancel(im_ctx_id_t id) {
+    if (rga_get_context() != IM_STATUS_SUCCESS)
+        return IM_STATUS_FAILED;
+
+    if (ioctl(rgaCtx->rgaFd, RGA_CANCEL_CONFIG, &id) < 0) {
+        printf(" %s(%d) start config fail: %s",__FUNCTION__, __LINE__,strerror(errno));
+        ALOGE(" %s(%d) start config fail: %s",__FUNCTION__, __LINE__,strerror(errno));
+
+        return IM_STATUS_FAILED;
     }
 
     return IM_STATUS_SUCCESS;

@@ -192,6 +192,16 @@ typedef enum {
     IM_INTR_WRITE_INTR          = 1 << 2,
 } IM_PRE_INTR_FLAGS;
 
+typedef enum {
+    IM_CONTEXT_NONE             = 0x0,
+    IM_CONTEXT_SRC_FIX_ENABLE   = 0x1 << 0,     // Enable kernel to modify the image parameters of the channel.
+    IM_CONTEXT_SRC_CACHE_INFO   = 0x1 << 1,     // It will replace the parameters in ctx with the modified parameters.
+    IM_CONTEXT_SRC1_FIX_ENABLE  = 0x1 << 2,
+    IM_CONTEXT_SRC1_CACHE_INFO  = 0x1 << 3,
+    IM_CONTEXT_DST_FIX_ENABLE   = 0x1 << 4,
+    IM_CONTEXT_DST_CACHE_INFO   = 0x1 << 5,
+} IM_CONTEXT_FLAGS;
+
 /* Get RGA basic information index */
 typedef enum {
     RGA_VENDOR = 0,
@@ -220,6 +230,7 @@ typedef enum {
 } IM_STATUS;
 
 typedef uint32_t im_api_version_t;
+typedef uint32_t im_ctx_id_t;
 typedef uint32_t rga_buffer_handle_t;
 
 /* Rectangle definition */
@@ -283,12 +294,12 @@ typedef struct im_color {
 } im_color_t;
 
 typedef struct im_osd_invert_factor {
-	uint8_t alpha_max;
-	uint8_t alpha_min;
-	uint8_t yg_max;
-	uint8_t yg_min;
-	uint8_t crb_max;
-	uint8_t crb_min;
+    uint8_t alpha_max;
+    uint8_t alpha_min;
+    uint8_t yg_max;
+    uint8_t yg_min;
+    uint8_t crb_max;
+    uint8_t crb_min;
 } im_osd_invert_factor_t;
 
 typedef struct im_osd_bpp2 {
@@ -324,8 +335,8 @@ typedef struct im_osd_block {
     int color_mode;                 // using src1 color or config color
                                     //   IM_OSD_COLOR_PIXEL
                                     //   IM_OSD_COLOR_EXTERNAL
-    im_color_t background_color;    // config color: background
-    im_color_t Foreground_color;    // config color: foreground
+    im_color_t normal_color;        // config color: normal
+    im_color_t invert_color;        // config color: invert
 } im_osd_block_t;
 
 typedef struct im_osd_invert {

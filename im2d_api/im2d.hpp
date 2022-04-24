@@ -34,6 +34,20 @@ using namespace android;
  *
  * @param fd/va/pa
  *      Select dma_fd/virtual_address/physical_address by buffer type
+ * @param size
+ *      Describes the size of the image buffer
+ *
+ * @return rga_buffer_handle_t
+ */
+IM_API rga_buffer_handle_t importbuffer_fd(int fd, int size);
+IM_API rga_buffer_handle_t importbuffer_virtualaddr(void *va, int size);
+IM_API rga_buffer_handle_t importbuffer_physicaladdr(uint64_t pa, int size);
+
+/*
+ * Import external buffers into RGA driver.
+ *
+ * @param fd/va/pa
+ *      Select dma_fd/virtual_address/physical_address by buffer type
  * @param width
  *      Describes the pixel width stride of the image buffer
  * @param height
@@ -59,13 +73,13 @@ IM_API rga_buffer_t wrapbuffer_handle(rga_buffer_handle_t  handle,
 #if ANDROID
 IM_API rga_buffer_handle_t importbuffer_GraphicBuffer_handle(buffer_handle_t hnd);
 IM_API rga_buffer_handle_t importbuffer_GraphicBuffer(sp<GraphicBuffer> buf);
-IM_API rga_buffer_handle_t importbuffer_AHardwareBuffer(AHardwareBuffer *buf);
 
 IM_API rga_buffer_t wrapbuffer_handle(buffer_handle_t hnd);
 IM_API rga_buffer_t wrapbuffer_GraphicBuffer(sp<GraphicBuffer> buf);
 
 #if USE_AHARDWAREBUFFER
 #include <android/hardware_buffer.h>
+IM_API rga_buffer_handle_t importbuffer_AHardwareBuffer(AHardwareBuffer *buf);
 IM_API rga_buffer_t wrapbuffer_AHardwareBuffer(AHardwareBuffer *buf);
 
 #endif /* USE_AHARDWAREBUFFER */
@@ -321,6 +335,9 @@ IM_API IM_STATUS imosd(const rga_buffer_t osd,const rga_buffer_t dst,
 IM_API IM_STATUS improcess(rga_buffer_t src, rga_buffer_t dst, rga_buffer_t pat,
                            im_rect srect, im_rect drect, im_rect prect,
                            int acquire_fence_fd, int *release_fence_fd, im_opt_t *opt_ptr, int usage);
+IM_API IM_STATUS improcess(rga_buffer_t src, rga_buffer_t dst, rga_buffer_t pat,
+                           im_rect srect, im_rect drect, im_rect prect,
+                           int acquire_fence_fd, int *release_fence_fd, im_opt_t *opt, int usage, im_ctx_id_t ctx_id);
 
 #endif /* _im2d_hpp_ */
 

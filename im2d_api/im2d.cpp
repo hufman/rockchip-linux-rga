@@ -103,6 +103,10 @@ IM_API const char* imStrError_t(IM_STATUS status) {
     return error_str;
 }
 
+IM_API rga_buffer_handle_t importbuffer_fd(int fd, int size) {
+    return rga_import_buffer((uint64_t)fd, RGA_DMA_BUFFER, (uint32_t)size);
+}
+
 IM_API rga_buffer_handle_t importbuffer_fd(int fd, im_handle_param_t *param) {
     return rga_import_buffer((uint64_t)fd, RGA_DMA_BUFFER, param);
 }
@@ -116,6 +120,10 @@ IM_API rga_buffer_handle_t importbuffer_virtualaddr(void *va, im_handle_param_t 
     return rga_import_buffer((uint64_t)va, RGA_VIRTUAL_ADDRESS, param);
 }
 
+IM_API rga_buffer_handle_t importbuffer_virtualaddr(void *va, int size) {
+    return rga_import_buffer((uint64_t)va, RGA_VIRTUAL_ADDRESS, (uint32_t)size);
+}
+
 IM_API rga_buffer_handle_t importbuffer_virtualaddr(void *va, int width, int height, int format) {
     im_handle_param_t param = {(uint32_t)width, (uint32_t)height, (uint32_t)format};
     return rga_import_buffer((uint64_t)va, RGA_VIRTUAL_ADDRESS, &param);
@@ -123,6 +131,10 @@ IM_API rga_buffer_handle_t importbuffer_virtualaddr(void *va, int width, int hei
 
 IM_API rga_buffer_handle_t importbuffer_physicaladdr(uint64_t pa, im_handle_param_t *param) {
     return rga_import_buffer(pa, RGA_PHYSICAL_ADDRESS, param);
+}
+
+IM_API rga_buffer_handle_t importbuffer_physicaladdr(uint64_t pa, int size) {
+    return rga_import_buffer(pa, RGA_PHYSICAL_ADDRESS, (uint32_t)size);
 }
 
 IM_API rga_buffer_handle_t importbuffer_physicaladdr(uint64_t pa, int width, int height, int format) {
@@ -246,12 +258,6 @@ IM_API rga_buffer_handle_t importbuffer_GraphicBuffer(sp<GraphicBuffer> buf) {
     return importbuffer_GraphicBuffer_handle(buf->handle);
 }
 
-IM_API rga_buffer_handle_t importbuffer_AHardwareBuffer(AHardwareBuffer *buf) {
-    GraphicBuffer *gbuffer = reinterpret_cast<GraphicBuffer*>(buf);
-
-    return importbuffer_GraphicBuffer_handle(gbuffer->handle);
-}
-
 /*When wrapbuffer_GraphicBuffer and wrapbuffer_AHardwareBuffer are used, */
 /*it is necessary to check whether fd and virtual address of the return rga_buffer_t are valid parameters*/
 IM_API rga_buffer_t wrapbuffer_handle(buffer_handle_t hnd) {
@@ -346,6 +352,12 @@ INVAILD:
 
 #if USE_AHARDWAREBUFFER
 #include <android/hardware_buffer.h>
+IM_API rga_buffer_handle_t importbuffer_AHardwareBuffer(AHardwareBuffer *buf) {
+    GraphicBuffer *gbuffer = reinterpret_cast<GraphicBuffer*>(buf);
+
+    return importbuffer_GraphicBuffer_handle(gbuffer->handle);
+}
+
 IM_API rga_buffer_t wrapbuffer_AHardwareBuffer(AHardwareBuffer *buf) {
     int ret = 0;
     rga_buffer_t buffer;
@@ -994,8 +1006,11 @@ IM_API IM_STATUS impalette(rga_buffer_t src, rga_buffer_t dst, rga_buffer_t lut,
     empty_structure(NULL, NULL, NULL, &srect, &drect, &prect, &opt);
 
     /*Don't know if it supports zooming.*/
-    if ((src.width != dst.width) || (src.height != dst.height))
+    if ((src.width != dst.width) || (src.height != dst.height)) {
+        imSetErrorMsg("The width and height of src and dst need to be equal, src[w,h] = [%d, %d], dst[w,h] = [%d, %d]",
+                      src.width, src.height, dst.width, dst.height);
         return IM_STATUS_INVALID_PARAM;
+    }
 
     usage |= IM_COLOR_PALETTE;
 
@@ -1023,8 +1038,11 @@ IM_API IM_STATUS imtranslate(const rga_buffer_t src, rga_buffer_t dst, int x, in
 
     empty_structure(NULL, NULL, &pat, &srect, &drect, &prect, &opt);
 
-    if ((src.width != dst.width) || (src.height != dst.height))
+    if ((src.width != dst.width) || (src.height != dst.height)) {
+        imSetErrorMsg("The width and height of src and dst need to be equal, src[w,h] = [%d, %d], dst[w,h] = [%d, %d]",
+                      src.width, src.height, dst.width, dst.height);
         return IM_STATUS_INVALID_PARAM;
+    }
 
     if (sync == 0)
         usage |= IM_ASYNC;
@@ -1281,6 +1299,13 @@ IM_API IM_STATUS improcess(rga_buffer_t src, rga_buffer_t dst, rga_buffer_t pat,
 IM_API IM_STATUS improcess(rga_buffer_t src, rga_buffer_t dst, rga_buffer_t pat,
                            im_rect srect, im_rect drect, im_rect prect,
                            int acquire_fence_fd, int *release_fence_fd, im_opt_t *opt_ptr, int usage) {
+    return improcess(src, dst, pat, srect, drect, prect, acquire_fence_fd, release_fence_fd, opt_ptr, usage, 0);
+}
+
+IM_API IM_STATUS improcess(rga_buffer_t src, rga_buffer_t dst, rga_buffer_t pat,
+                           im_rect srect, im_rect drect, im_rect prect,
+                           int acquire_fence_fd, int *release_fence_fd,
+                           im_opt_t *opt_ptr, int usage, im_ctx_id_t ctx_id) {
     int ret;
     rga_info_t srcinfo;
     rga_info_t dstinfo;
@@ -1447,22 +1472,22 @@ IM_API IM_STATUS improcess(rga_buffer_t src, rga_buffer_t dst, rga_buffer_t pat,
             srcinfo.osd_info.bpp2_info.color0.value = opt.osd_config.bpp2_info.color0.value;
             srcinfo.osd_info.bpp2_info.color1.value = opt.osd_config.bpp2_info.color1.value;
         } else {
-            srcinfo.osd_info.bpp2_info.color0.value = opt.osd_config.block_parm.background_color.value;
-            srcinfo.osd_info.bpp2_info.color1.value = opt.osd_config.block_parm.Foreground_color.value;
+            srcinfo.osd_info.bpp2_info.color0.value = opt.osd_config.block_parm.normal_color.value;
+            srcinfo.osd_info.bpp2_info.color1.value = opt.osd_config.block_parm.invert_color.value;
         }
 
         switch (opt.osd_config.invert_config.invert_channel) {
             case IM_OSD_INVERT_CHANNEL_NONE:
-                srcinfo.osd_info.mode_ctrl.invert_enable = (0x1 << 1) | (0x1 << 3);
+                srcinfo.osd_info.mode_ctrl.invert_enable = (0x1 << 1) | (0x1 << 2);
                 break;
             case IM_OSD_INVERT_CHANNEL_Y_G:
-                srcinfo.osd_info.mode_ctrl.invert_enable = 0x1 <<3;
+                srcinfo.osd_info.mode_ctrl.invert_enable = 0x1 << 2;
                 break;
             case IM_OSD_INVERT_CHANNEL_C_RB:
                 srcinfo.osd_info.mode_ctrl.invert_enable = 0x1 << 1;
                 break;
             case IM_OSD_INVERT_CHANNEL_ALPHA:
-                srcinfo.osd_info.mode_ctrl.invert_enable = (0x1 << 0) | (0x1 << 1) | (0x1 << 3);
+                srcinfo.osd_info.mode_ctrl.invert_enable = (0x1 << 0) | (0x1 << 1) | (0x1 << 2);
                 break;
             case IM_OSD_INVERT_CHANNEL_COLOR:
                 srcinfo.osd_info.mode_ctrl.invert_enable = 0;
@@ -1517,7 +1542,7 @@ IM_API IM_STATUS improcess(rga_buffer_t src, rga_buffer_t dst, rga_buffer_t pat,
         srcinfo.pre_intr.read_intr_en = opt.intr_config.flags & IM_INTR_READ_INTR ? true : false;
         if (srcinfo.pre_intr.read_intr_en) {
             srcinfo.pre_intr.read_intr_en = true;
-            srcinfo.pre_intr.read_hold_en = opt.intr_config.flags & IM_INTR_READ_HOLD;
+            srcinfo.pre_intr.read_hold_en = opt.intr_config.flags & IM_INTR_READ_HOLD ? true : false;
             srcinfo.pre_intr.read_threshold = opt.intr_config.read_threshold;
         }
 
@@ -1643,10 +1668,10 @@ IM_API IM_STATUS improcess(rga_buffer_t src, rga_buffer_t dst, rga_buffer_t pat,
         dstinfo.dither.lut1_h = 0xfedc;
     }
 
-	srcinfo.rd_mode = src.rd_mode;
-	dstinfo.rd_mode = dst.rd_mode;
-	if (rga_is_buffer_valid(pat))
-		patinfo.rd_mode = pat.rd_mode;
+    srcinfo.rd_mode = src.rd_mode;
+    dstinfo.rd_mode = dst.rd_mode;
+    if (rga_is_buffer_valid(pat))
+        patinfo.rd_mode = pat.rd_mode;
 
     RockchipRga& rkRga(RockchipRga::get());
 
@@ -1665,6 +1690,15 @@ IM_API IM_STATUS improcess(rga_buffer_t src, rga_buffer_t dst, rga_buffer_t pat,
     dstinfo.in_fence_fd = acquire_fence_fd;
     dstinfo.core = opt.core ? opt.core : g_im2d_context.core;
     dstinfo.priority = opt.priority ? opt.priority : g_im2d_context.priority;
+
+    if (ctx_id != 0) {
+        dstinfo.ctx_id = ctx_id;
+        if (dstinfo.ctx_id <= 0) {
+            imSetErrorMsg("ctx id is invalid");
+            return IM_STATUS_ILLEGAL_PARAM;
+        }
+        dstinfo.mpi_mode = 1;
+    }
 
     if (usage & IM_COLOR_FILL) {
         dstinfo.color = opt.color;
@@ -1743,6 +1777,14 @@ IM_API IM_STATUS imconfig(IM_CONFIG_NAME name, uint64_t value) {
     }
 
     return IM_STATUS_SUCCESS;
+}
+
+IM_API im_ctx_id_t imbegin(uint32_t flags) {
+    return rga_begin_job(flags);
+}
+
+IM_API IM_STATUS imcancel(im_ctx_id_t id) {
+    return rga_cancel(id);
 }
 
 /* For the C interface */

@@ -1066,6 +1066,7 @@ int RgaBlit(rga_info *src, rga_info *dst, rga_info *src1) {
     else
         ditherEn = 0;
 
+#if 0
     /* YUV HDS or VDS enable */
     if (NormalRgaIsYuvFormat(relDstRect.format)) {
         rgaReg.uvhds_mode = 1;
@@ -1076,6 +1077,7 @@ int RgaBlit(rga_info *src, rga_info *dst, rga_info *src1) {
             rgaReg.uvvds_mode = 1;
         }
     }
+#endif
 
 #ifdef ANDROID
     if(is_out_log())
@@ -1423,25 +1425,50 @@ int RgaBlit(rga_info *src, rga_info *dst, rga_info *src1) {
 
     /* rga3 rd_mode */
     /* If rd_mode is not configured, raster mode is executed by default. */
-	rgaReg.src.rd_mode = src->rd_mode ? src->rd_mode : raster_mode;
-	rgaReg.dst.rd_mode = dst->rd_mode ? dst->rd_mode : raster_mode;
-	if (src1)
-		rgaReg.pat.rd_mode = src1->rd_mode ? src1->rd_mode : raster_mode;
+    rgaReg.src.rd_mode = src->rd_mode ? src->rd_mode : raster_mode;
+    rgaReg.dst.rd_mode = dst->rd_mode ? dst->rd_mode : raster_mode;
+    if (src1)
+        rgaReg.pat.rd_mode = src1->rd_mode ? src1->rd_mode : raster_mode;
 
-	rgaReg.in_fence_fd = dst->in_fence_fd;
-	rgaReg.core = dst->core;
-	rgaReg.priority = dst->priority;
+    rgaReg.in_fence_fd = dst->in_fence_fd;
+    rgaReg.core = dst->core;
+    rgaReg.priority = dst->priority;
 
-    do {
-        ret = ioctl(ctx->rgaFd, sync_mode, &rgaReg);
-    } while (ret == -1 && (errno == EINTR || errno == 512));   /* ERESTARTSYS is 512. */
-    if(ret) {
-        printf(" %s(%d) RGA_BLIT fail: %s\n",__FUNCTION__, __LINE__,strerror(errno));
-        ALOGE(" %s(%d) RGA_BLIT fail: %s",__FUNCTION__, __LINE__,strerror(errno));
-        return -errno;
+    if (dst->mpi_mode == 1 && dst->ctx_id > 0)
+    {
+        struct rga_user_ctx_t cmd_ctx;
+        struct rga_req cmd[1];
+        int ret;
+
+        memset(&cmd_ctx, 0x0, sizeof(cmd_ctx));
+        memset(cmd, 0x0, sizeof(cmd));
+
+        cmd_ctx.sync_mode = sync_mode;
+
+        cmd[0] = rgaReg;
+
+        cmd_ctx.id = dst->ctx_id;
+        cmd_ctx.cmd_ptr = (uint64_t)cmd;
+        cmd_ctx.cmd_num = 1;
+
+        ret = ioctl(ctx->rgaFd, RGA_CMD_CONFIG, &cmd_ctx);
+        if (ret < 0) {
+            printf(" %s(%d) start config fail: %s",__FUNCTION__, __LINE__,strerror(errno));
+            ALOGE(" %s(%d) start config fail: %s",__FUNCTION__, __LINE__,strerror(errno));
+            return -errno;
+        }
+    } else {
+        do {
+            ret = ioctl(ctx->rgaFd, sync_mode, &rgaReg);
+        } while (ret == -1 && (errno == EINTR || errno == 512));   /* ERESTARTSYS is 512. */
+        if(ret) {
+            printf(" %s(%d) RGA_BLIT fail: %s\n",__FUNCTION__, __LINE__,strerror(errno));
+            ALOGE(" %s(%d) RGA_BLIT fail: %s",__FUNCTION__, __LINE__,strerror(errno));
+            return -errno;
+        }
     }
 
-	dst->out_fence_fd = rgaReg.out_fence_fd;
+    dst->out_fence_fd = rgaReg.out_fence_fd;
 
     return 0;
 }
@@ -1677,11 +1704,11 @@ int RgaCollorFill(rga_info *dst) {
 
     /* rga3 rd_mode */
     /* If rd_mode is not configured, raster mode is executed by default. */
-	rgaReg.dst.rd_mode = dst->rd_mode ? dst->rd_mode : raster_mode;
+    rgaReg.dst.rd_mode = dst->rd_mode ? dst->rd_mode : raster_mode;
 
-	rgaReg.in_fence_fd = dst->in_fence_fd;
-	rgaReg.core = dst->core;
-	rgaReg.priority = dst->priority;
+    rgaReg.in_fence_fd = dst->in_fence_fd;
+    rgaReg.core = dst->core;
+    rgaReg.priority = dst->priority;
 
     do {
         ret = ioctl(ctx->rgaFd, sync_mode, &rgaReg);
@@ -2269,14 +2296,14 @@ int RgaCollorPalette(rga_info *src, rga_info *dst, rga_info *lut) {
 
     /* rga3 rd_mode */
     /* If rd_mode is not configured, raster mode is executed by default. */
-	rgaReg.src.rd_mode = src->rd_mode ? src->rd_mode : raster_mode;
-	rgaReg.dst.rd_mode = dst->rd_mode ? dst->rd_mode : raster_mode;
-	if (lut)
-		rgaReg.pat.rd_mode = lut->rd_mode ? lut->rd_mode : raster_mode;
+    rgaReg.src.rd_mode = src->rd_mode ? src->rd_mode : raster_mode;
+    rgaReg.dst.rd_mode = dst->rd_mode ? dst->rd_mode : raster_mode;
+    if (lut)
+        rgaReg.pat.rd_mode = lut->rd_mode ? lut->rd_mode : raster_mode;
 
     rgaReg.in_fence_fd = dst->in_fence_fd;
-	rgaReg.core = dst->core;
-	rgaReg.priority = dst->priority;
+    rgaReg.core = dst->core;
+    rgaReg.priority = dst->priority;
 
     if (!(lutFd == -1 && lutBuf == NULL)) {
         rgaReg.fading.g = 0xff;
